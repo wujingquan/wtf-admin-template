@@ -2,6 +2,21 @@
 import { ref } from "vue";
 import role from "@/api/role";
 import { CascaderProps } from "element-plus";
+import api from "@/api/api";
+import { groupBy } from "lodash";
+
+interface IApi {
+  id: number;
+  group: string;
+  name: string;
+  description?: string;
+  method: string;
+  path: string;
+}
+interface IApiRes {
+  items: IApi[];
+}
+
 interface Role {
   id: number;
   pid: number;
@@ -24,6 +39,7 @@ const form = ref<{
 const formType = ref("add");
 const tableData = ref<Role[]>([]);
 const options = ref<any>([]);
+const drawer = ref(false);
 const props1: CascaderProps = {
   checkStrictly: true,
   emitPath: false,
@@ -150,6 +166,41 @@ const visibleChange = visible => {
     ];
   }
 };
+const handlePower = () => {
+  drawer.value = true;
+};
+
+const getAllApi = async () => {
+  const res = (await api.get()) as IApiRes;
+  // 分组
+  console.log("res", res);
+  const r = groupBy(res.items, "group");
+  console.log("r", r);
+
+  const arr = [];
+  for (const k in r) {
+    arr.push({
+      name: k,
+      children: r[k]
+    });
+  }
+  treeData.value = arr;
+  console.log("arr", arr);
+};
+
+const treeData = ref([]);
+const treeProps = {
+  label: "name"
+};
+const activeName = ref("menu");
+
+const handleCheckChange = () => {};
+const handleTabChange = async name => {
+  console.log("name", name);
+  if (name === "api") {
+    await getAllApi();
+  }
+};
 
 getList();
 </script>
@@ -168,7 +219,9 @@ getList();
       <el-table-column prop="name" label="角色名称" align="center" />
       <el-table-column prop="address" label="操作" align="center">
         <template #default="scope">
-          <el-button size="small" type="primary">设置权限</el-button>
+          <el-button size="small" type="primary" @click="handlePower"
+            >设置权限</el-button
+          >
           <el-button size="small" type="primary" @click="add(scope.row.id)"
             >新增子角色</el-button
           >
@@ -215,5 +268,25 @@ getList();
         </span>
       </template>
     </el-dialog>
+
+    <el-drawer v-model="drawer" title="I am the title" :with-header="false">
+      <el-tabs
+        v-model="activeName"
+        type="border-card"
+        @tab-change="handleTabChange"
+      >
+        <el-tab-pane label="角色菜单" name="menu">角色菜单</el-tab-pane>
+        <el-tab-pane label="角色API" name="api">
+          <el-tree
+            :data="treeData"
+            :props="treeProps"
+            :default-expand-all="true"
+            show-checkbox
+            @check-change="handleCheckChange"
+          />
+        </el-tab-pane>
+        <el-tab-pane label="资源权限" name="resource">资源权限</el-tab-pane>
+      </el-tabs>
+    </el-drawer>
   </div>
 </template>
